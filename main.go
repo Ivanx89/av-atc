@@ -30,22 +30,24 @@ func main() {
 
 	var request Request
 	var Comms = Comms{Request: request}
+
 	// Create a new form.
 
 	form := huh.NewForm(
 
 		huh.NewGroup(
+			// Choose your action
 			huh.NewSelect[string]().
 				Options(huh.NewOptions("Land", "Take Off")...).
 				Title("Choose your request").
 				Description("At Charm we truly have a burger for everyone.").
 				Value(&Comms.Request.Action),
-
+			// Enter your callsign
 			huh.NewInput().
 				Value(&Comms.Request.Callsign).
 				Title("Callsign").
 				Placeholder("XYZ-1-F"),
-
+			// Confirm your request
 			huh.NewConfirm().
 				Title("Submit?").
 				Value(&Comms.Confirmation).
@@ -60,6 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create loading spinner
 	sendComms := func() {
 		time.Sleep(2 * time.Second)
 	}
@@ -70,11 +73,13 @@ func main() {
 		var message string
 		var hangar int = rand.Intn(30)
 
+		// Check if callsign is empty
 		Callsign := Comms.Request.Callsign
 		if Callsign != "" {
 			Callsign = ", " + Callsign
 		}
 
+		// Reply with the action acknowledgment
 		Action := Comms.Request.Action
 		if Action == "Take Off" {
 			message = "You are clear to launch!\n\nThank you! Please visit again!"
@@ -82,6 +87,7 @@ func main() {
 			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
 		}
 
+		// Print the message
 		fmt.Println(
 			lipgloss.NewStyle().
 				Width(40).
