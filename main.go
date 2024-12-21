@@ -40,7 +40,6 @@ func main() {
 			huh.NewSelect[string]().
 				Options(huh.NewOptions("Land", "Take Off")...).
 				Title("Choose your request").
-				Description("At Charm we truly have a burger for everyone.").
 				Value(&Comms.Request.Action),
 			// Enter your callsign
 			huh.NewInput().
