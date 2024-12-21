@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/huh"
@@ -67,22 +66,19 @@ func main() {
 	_ = spinner.New().Title("Request in progress...").Action(sendComms).Run()
 
 	{
-		var s strings.Builder
-		keyword := func(s string) string {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Render(s)
-		}
-		fmt.Fprintf(&s,
-			"%s\n\nYou are clear to %s %s.",
-			lipgloss.NewStyle().Bold(true).Render("REQUEST RECEIVED"),
-			keyword(Comms.Request.Action),
-			keyword(Comms.Request.Callsign),
-		)
+		var message string
 
 		Callsign := Comms.Request.Callsign
 		if Callsign != "" {
 			Callsign = ", " + Callsign
 		}
-		fmt.Fprintf(&s, "\n\nThank you! Please visit again!")
+
+		Action := Comms.Request.Action
+		if Action == "Take Off" {
+			message = "You are clear to launch!\n\nThank you! Please visit again!"
+		} else {
+			message = "LANDING"
+		}
 
 		fmt.Println(
 			lipgloss.NewStyle().
@@ -90,7 +86,7 @@ func main() {
 				BorderStyle(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("63")).
 				Padding(1, 2).
-				Render(s.String()),
+				Render(message),
 		)
 	}
 }
