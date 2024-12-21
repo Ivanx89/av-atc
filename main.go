@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -67,6 +68,7 @@ func main() {
 
 	{
 		var message string
+		var hangar int = rand.Intn(30)
 
 		Callsign := Comms.Request.Callsign
 		if Callsign != "" {
@@ -77,7 +79,7 @@ func main() {
 		if Action == "Take Off" {
 			message = "You are clear to launch!\n\nThank you! Please visit again!"
 		} else {
-			message = "LANDING"
+			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
 		}
 
 		fmt.Println(
