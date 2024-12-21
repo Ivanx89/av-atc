@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -70,7 +72,7 @@ func main() {
 
 	{
 		var message string
-		var hangar int = rand.Intn(30)
+		hangar := rand.Intn(30)
 
 		// Check if callsign is empty
 		Callsign := Comms.Request.Callsign
@@ -84,6 +86,20 @@ func main() {
 			message = "You are clear to launch!\n\nThank you! Please visit again!"
 		} else {
 			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
+		}
+
+		// Insert the submission into the SQLite database
+		db, err := sql.Open("sqlite3", "./data/users.sqlite")
+		if err != nil {
+			fmt.Println("Failed to connect to the database:", err)
+			os.Exit(1)
+		}
+		defer db.Close()
+
+		_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+		if err != nil {
+			fmt.Println("Failed to insert data:", err)
+			os.Exit(1)
 		}
 
 		// Print the message
