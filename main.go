@@ -80,15 +80,8 @@ func main() {
 			Callsign = ", " + Callsign
 		}
 
-		// Reply with the action acknowledgment
-		Action := Comms.Request.Action
-		if Action == "Take Off" {
-			message = "You are clear to launch!\n\nThank you! Please visit again!"
-		} else {
-			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
-		}
-
 		// Insert the submission into the SQLite database
+
 		db, err := sql.Open("sqlite3", "./data/users.sqlite")
 		if err != nil {
 			fmt.Println("Failed to connect to the database:", err)
@@ -96,10 +89,28 @@ func main() {
 		}
 		defer db.Close()
 
-		_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+		sqlStmt := ` CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, callsign VARCHAR(30), hangar INT); `
+		_, err = db.Exec(sqlStmt)
 		if err != nil {
-			fmt.Println("Failed to insert data:", err)
-			os.Exit(1)
+			fmt.Println("Backend failure.")
+		}
+
+		// Reply with the action acknowledgment
+		Action := Comms.Request.Action
+		if Action == "Take Off" {
+			message = "You are clear to launch!\n\nThank you! Please visit again!"
+			_, err = db.Exec("DELETE FROM users WHERE (callsign) = ?", Comms.Request.Callsign)
+			if err != nil {
+				fmt.Println("Failed to delete data:", err)
+				os.Exit(1)
+			}
+		} else {
+			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
+			_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+			if err != nil {
+				fmt.Println("Failed to insert data:", err)
+				os.Exit(1)
+			}
 		}
 
 		// Print the message
