@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
+	"github.com/charmbracelet/lipgloss"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -89,7 +90,7 @@ func main() {
 		}
 		defer db.Close()
 
-		sqlStmt := ` CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, callsign VARCHAR(30), hangar INT); `
+		sqlStmt := ` CREATE TABLE IF NOT EXISTS users (callsign VARCHAR(30), hangar INT); `
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
 			fmt.Println("Backend failure.")
@@ -115,27 +116,59 @@ func main() {
 			os.Exit(1)
 		}
 
-		if !exists {
-			_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
-			if err != nil {
-				fmt.Println("Failed to insert data:", err)
-				os.Exit(1)
-			}
-		}
-
 		// Reply with the action acknowledgment
 		Action := Comms.Request.Action
-		if Action == "Take Off" {
+		if Action == "Take Off" && exists {
 			message = "You are clear to launch!\n\nThank you! Please visit again!"
+			fmt.Println(
+				lipgloss.NewStyle().
+					Width(40).
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("63")).
+					Padding(1, 2).
+					Render(message),
+			)
 			_, err = db.Exec("DELETE FROM users WHERE callsign = ?", Comms.Request.Callsign)
 			if err != nil {
 				fmt.Println("Failed to delete data:", err)
 				os.Exit(1)
 			}
-		} else {
+		} else if Action == "Land" && !exists {
 			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
-		}
+			fmt.Println(
+				lipgloss.NewStyle().
+					Width(40).
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("63")).
+					Padding(1, 2).
+					Render(message),
+			)
+			_, err = db.Exec("INSERT INTO users VALUES (?, ?)", Comms.Request.Callsign, hangar)
+			if err != nil {
+				fmt.Println("Failed to insert data:", err)
+				os.Exit(1)
+			}
+		} else if Action == "Take Off" && !exists {
+			message = "Please land before requesting to take off."
+			fmt.Println(
+				lipgloss.NewStyle().
+					Width(40).
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("63")).
+					Padding(1, 2).
+					Render(message),
+			)
+		} else if Action == "Land" && exists {
+			message = "Your request is already granted."
 
-		fmt.Println(message)
+			fmt.Println(
+				lipgloss.NewStyle().
+					Width(40).
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("63")).
+					Padding(1, 2).
+					Render(message),
+			)
+		}
 	}
 }
