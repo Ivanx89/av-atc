@@ -9,7 +9,6 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
-	"github.com/charmbracelet/lipgloss"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -72,7 +71,8 @@ func main() {
 
 	{
 		var message string
-		hangar := rand.Intn(30)
+		var hangar int
+		var exists bool
 
 		// Check if callsign is empty
 		Callsign := Comms.Request.Callsign
@@ -95,56 +95,47 @@ func main() {
 			fmt.Println("Backend failure.")
 		}
 
+		// Generate a unique hangar number
+		for {
+			hangar = rand.Intn(30)
+			err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE hangar = ?)", hangar).Scan(&exists)
+			if err != nil {
+				fmt.Println("Failed to check for existing hangar:", err)
+				os.Exit(1)
+			}
+			if !exists {
+				break
+			}
+		}
+
+		// Check if the callsign already exists
+		err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE callsign = ?)", Comms.Request.Callsign).Scan(&exists)
+		if err != nil {
+			fmt.Println("Failed to check for existing callsign:", err)
+			os.Exit(1)
+		}
+
+		if !exists {
+			_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+			if err != nil {
+				fmt.Println("Failed to insert data:", err)
+				os.Exit(1)
+			}
+		}
+
 		// Reply with the action acknowledgment
 		Action := Comms.Request.Action
 		if Action == "Take Off" {
-			var exists bool
-			err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE callsign = ?)", Comms.Request.Callsign).Scan(&exists)
+			message = "You are clear to launch!\n\nThank you! Please visit again!"
+			_, err = db.Exec("DELETE FROM users WHERE callsign = ?", Comms.Request.Callsign)
 			if err != nil {
-				fmt.Println("Failed to check for existing callsign:", err)
+				fmt.Println("Failed to delete data:", err)
 				os.Exit(1)
-			}
-
-			if exists {
-				_, err = db.Exec("DELETE FROM users WHERE (callsign) = ?", Comms.Request.Callsign)
-				message = "You are clear to launch!\n\nThank you! Please visit again!"
-				if err != nil {
-					fmt.Println("Failed to delete data:", err)
-					os.Exit(1)
-				}
-			} else {
-				message = "You are not cleared for takeoff. Please land first."
 			}
 		} else {
-			// Check if the callsign already exists
-			var exists bool
-			err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE callsign = ?)", Comms.Request.Callsign).Scan(&exists)
-			if err != nil {
-				fmt.Println("Failed to check for existing callsign:", err)
-				os.Exit(1)
-			}
-
-			if !exists {
-				_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
-				message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
-				if err != nil {
-					fmt.Println("Failed to insert data:", err)
-					os.Exit(1)
-				}
-			} else {
-				fmt.Println("Your request is already granted.")
-			}
-
+			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
 		}
 
-		// Print the message
-		fmt.Println(
-			lipgloss.NewStyle().
-				Width(40).
-				BorderStyle(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("63")).
-				Padding(1, 2).
-				Render(message),
-		)
+		fmt.Println(message)
 	}
 }
