@@ -98,19 +98,43 @@ func main() {
 		// Reply with the action acknowledgment
 		Action := Comms.Request.Action
 		if Action == "Take Off" {
-			message = "You are clear to launch!\n\nThank you! Please visit again!"
-			_, err = db.Exec("DELETE FROM users WHERE (callsign) = ?", Comms.Request.Callsign)
+			var exists bool
+			err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE callsign = ?)", Comms.Request.Callsign).Scan(&exists)
 			if err != nil {
-				fmt.Println("Failed to delete data:", err)
+				fmt.Println("Failed to check for existing callsign:", err)
 				os.Exit(1)
+			}
+
+			if exists {
+				_, err = db.Exec("DELETE FROM users WHERE (callsign) = ?", Comms.Request.Callsign)
+				message = "You are clear to launch!\n\nThank you! Please visit again!"
+				if err != nil {
+					fmt.Println("Failed to delete data:", err)
+					os.Exit(1)
+				}
+			} else {
+				message = "You are not cleared for takeoff. Please land first."
 			}
 		} else {
-			message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
-			_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+			// Check if the callsign already exists
+			var exists bool
+			err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE callsign = ?)", Comms.Request.Callsign).Scan(&exists)
 			if err != nil {
-				fmt.Println("Failed to insert data:", err)
+				fmt.Println("Failed to check for existing callsign:", err)
 				os.Exit(1)
 			}
+
+			if !exists {
+				_, err = db.Exec("INSERT INTO users (callsign, hangar) VALUES (?, ?)", Comms.Request.Callsign, hangar)
+				message = "Please proceed to hangar " + fmt.Sprint(hangar) + Callsign + "."
+				if err != nil {
+					fmt.Println("Failed to insert data:", err)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println("Your request is already granted.")
+			}
+
 		}
 
 		// Print the message
